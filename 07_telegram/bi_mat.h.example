@@ -1,0 +1,8 @@
+// Chep file nay thanh bi_mat.h roi dien gia tri that vao.
+#pragma once
+#define TELEGRAM_TOKEN   "DIEN_VAO_DAY"
+#define TELEGRAM_CHAT_ID "DIEN_VAO_DAY"
+
+// ---- Wi-Fi ----
+#define WIFI_SSID "DIEN_VAO_DAY"
+#define WIFI_PASS "DIEN_VAO_DAY"
