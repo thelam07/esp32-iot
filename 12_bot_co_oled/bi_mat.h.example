@@ -10,3 +10,7 @@
 // ---- Wi-Fi ----
 #define WIFI_SSID "DIEN_VAO_DAY"
 #define WIFI_PASS "DIEN_VAO_DAY"
+
+// ---- Wi-Fi thu hai (o que). Chua biet thi de nguyen "" ----
+#define WIFI_SSID_2 ""
+#define WIFI_PASS_2 ""

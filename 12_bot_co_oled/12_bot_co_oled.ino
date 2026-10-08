@@ -21,6 +21,54 @@ IPAddress dnsServer(192, 168, 0,   1);
 IPAddress apIP     (192, 168, 4, 1);
 IPAddress apSubnet (255, 255, 255, 0);
 
+void veThongBao(const char* dong1, const char* dong2);
+
+struct MangWifi {
+  const char* ten;
+  const char* matKhau;
+  bool        ipTinhRieng;
+};
+
+MangWifi dsWifi[] = {
+  { WIFI_SSID,   WIFI_PASS,   true  },
+  { WIFI_SSID_2, WIFI_PASS_2, false },
+};
+
+#define SO_MANG_WIFI ((int)(sizeof(dsWifi) / sizeof(dsWifi[0])))
+
+int mangDangDung = -1;
+
+bool thuNoiMang(int i, unsigned long hanCho) {
+  if (dsWifi[i].ten == nullptr || strlen(dsWifi[i].ten) == 0) return false;
+
+  Serial.printf("Thu noi Wi-Fi \"%s\"", dsWifi[i].ten);
+  veThongBao("Dang noi Wi-Fi...", dsWifi[i].ten);
+
+  WiFi.disconnect();
+  if (dsWifi[i].ipTinhRieng) WiFi.config(ipTinh, gateway, subnet, dnsServer);
+  else                       WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+  WiFi.begin(dsWifi[i].ten, dsWifi[i].matKhau);
+
+  unsigned long batDau = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - batDau < hanCho) {
+    delay(250);
+    Serial.print(".");
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    mangDangDung = i;
+    Serial.printf(" OK - IP %s\n", WiFi.localIP().toString().c_str());
+    return true;
+  }
+  Serial.println(" that bai.");
+  return false;
+}
+
+bool noiWifi(unsigned long hanCho) {
+  for (int i = 0; i < SO_MANG_WIFI; i++) if (thuNoiMang(i, hanCho)) return true;
+  return false;
+}
+
 #define DHT_PIN  4
 #define DHT_TYPE DHT11
 
@@ -157,10 +205,11 @@ void kiemTraWifi() {
     ESP.restart();
   }
 
+  static int ketTiep = 0;
   soLanNoiLaiWifi++;
   Serial.printf("Thu noi lai lan %d...\n", soLanNoiLaiWifi);
-  WiFi.disconnect();
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  thuNoiMang(ketTiep % SO_MANG_WIFI, 6000);
+  ketTiep++;
 }
 
 String thoiGianChay() {
@@ -571,8 +620,6 @@ void setup() {
   Wire.begin();
   coManHinh = man.begin(SSD1306_SWITCHCAPVCC, OLED_DIA_CHI);
   Serial.println(coManHinh ? "OLED: OK" : "OLED: KHONG THAY, chay tiep khong co man hinh");
-  veThongBao("Dang noi Wi-Fi...", WIFI_SSID);
-
   WiFi.mode(WIFI_AP_STA);
 
   WiFi.softAPConfig(apIP, apIP, apSubnet);
@@ -582,20 +629,18 @@ void setup() {
   Serial.println(WiFi.softAPIP());
 
   WiFi.setAutoReconnect(true);
-  if (!WiFi.config(ipTinh, gateway, subnet, dnsServer)) {
-    Serial.println("CANH BAO: khong dat duoc IP tinh, se dung IP router cap.");
+
+  if (noiWifi(12000)) {
+    configTime(7 * 3600, 0, "pool.ntp.org", "time.google.com");
+    veThongBao("Da noi Wi-Fi", WiFi.localIP().toString().c_str());
+    Serial.println("DA KET NOI! Co HAI duong vao trang web:");
+    Serial.print("  1. Qua mang nha  : http://");
+    Serial.println(WiFi.localIP());
+  } else {
+    veThongBao("Khong co Wi-Fi nao", "Dung song ESP32-Phong");
+    Serial.println("KHONG noi duoc Wi-Fi nao trong danh sach.");
+    Serial.println("Van chay tiep: man hinh + song rieng. Se thu lai moi 30 giay.");
   }
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  Serial.print("Dang ket noi Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-
-  configTime(7 * 3600, 0, "pool.ntp.org", "time.google.com");
-  veThongBao("Da noi Wi-Fi", WiFi.localIP().toString().c_str());
-
-  Serial.println("\nDA KET NOI!");
-  Serial.println("Co HAI duong vao trang web:");
-  Serial.print("  1. Qua mang nha  : http://");
-  Serial.println(WiFi.localIP());
   Serial.print("  2. Qua song rieng: http://");
   Serial.print(WiFi.softAPIP());
   Serial.printf("   (noi vao Wi-Fi \"%s\")\n", AP_SSID);
